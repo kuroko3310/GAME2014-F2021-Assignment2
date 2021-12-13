@@ -28,7 +28,7 @@ public class PlayerBehaviour : MonoBehaviour
     private float inputX;
 
 
-    private Rigidbody2D rbody;
+    public Rigidbody2D rbody;
     private Animator anim;
     private BoxCollider2D boxCollider;
 
@@ -63,6 +63,7 @@ public class PlayerBehaviour : MonoBehaviour
 
             // make player move left/right
             rbody.velocity = new Vector2(inputX * movementSpeed, rbody.velocity.y);
+           
 
             // make player stuck on wall
             if (OnWall() && !isGrounded())
@@ -169,4 +170,22 @@ public class PlayerBehaviour : MonoBehaviour
         return raycastHit.collider != null;
     }
 
+
+    private void OnCollisionEnter2D(Collision2D other)
+    {
+        if (other.gameObject.CompareTag("Platform"))
+        {
+            // makes player stay on top of platform
+            transform.SetParent(other.transform);
+        }
+    }
+
+    private void OnCollisionExit2D(Collision2D other)
+    {
+        if (other.gameObject.CompareTag("Platform"))
+        {
+            // resets player's transform
+            transform.SetParent(null);
+        }
+    }
 }
