@@ -18,6 +18,7 @@ public class PlayerBehaviour : MonoBehaviour
     [SerializeField] private float jumpPower;
     [SerializeField] private float walljumpPowerX;
     [SerializeField] private float walljumpPowerY;
+   
 
 
     [Header("Animation")]
@@ -26,6 +27,8 @@ public class PlayerBehaviour : MonoBehaviour
 
     private float wallJumpCooldown;
     private float inputX;
+    private float mass;
+    private float inputJump;
 
 
     public Rigidbody2D rbody;
@@ -42,6 +45,8 @@ public class PlayerBehaviour : MonoBehaviour
         rbody = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
         boxCollider = GetComponent<BoxCollider2D>();
+
+        mass = rbody.mass * rbody.gravityScale;
     }
 
     void FixedUpdate()
@@ -53,7 +58,7 @@ public class PlayerBehaviour : MonoBehaviour
     private void Move()
     {
         inputX = Input.GetAxisRaw("Horizontal");
-        float inputJump = Input.GetAxisRaw("Jump");
+        inputJump = Input.GetAxisRaw("Jump");
 
         FlipSprite();
 
@@ -62,8 +67,14 @@ public class PlayerBehaviour : MonoBehaviour
         {
 
             // make player move left/right
-            rbody.velocity = new Vector2(inputX * movementSpeed, rbody.velocity.y);
-           
+            //rbody.velocity = new Vector2(inputX * movementSpeed, rbody.velocity.y);
+
+            float horizontalMoveForce = inputX * movementSpeed;
+  
+            
+            rbody.AddForce(new Vector2(horizontalMoveForce, 0) * mass);
+            rbody.velocity *= 0.99f; // scaling / stopping hack
+
 
             // make player stuck on wall
             if (OnWall() && !isGrounded())
@@ -101,9 +112,9 @@ public class PlayerBehaviour : MonoBehaviour
         state = PlayerAnimationState.JUMP;
         if (isGrounded())
         {
-           // jump up
-            rbody.velocity = new Vector2(rbody.velocity.x, jumpPower);
-          
+            // jump up
+           rbody.velocity = new Vector2(rbody.velocity.x, jumpPower);
+       
         }
         else if (OnWall() && !isGrounded())
         {
@@ -170,6 +181,7 @@ public class PlayerBehaviour : MonoBehaviour
         return raycastHit.collider != null;
     }
 
+   
 
     private void OnCollisionEnter2D(Collision2D other)
     {
