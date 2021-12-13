@@ -1,3 +1,11 @@
+/*  Source file name: UIController.cs
+ *  Author's name: Jen Marc Capistrano
+ *  Student number: 101218004
+ *  Date last modified: 12 December 2021
+ *  Program description: This script is mainly for scene transition and buttons function
+ *  Revision history: Added functions for UI buttons
+ */
+
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -5,13 +13,7 @@ using UnityEngine.SceneManagement;
 
 public class UIController : MonoBehaviour
 {
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
-
-
+   
     public void OnMenuPressed()
     {
         SceneManager.LoadScene("Title");

@@ -1,3 +1,12 @@
+/*  Source file name: PlayerBehaviour.cs
+ *  Author's name: Jen Marc Capistrano
+ *  Student number: 101218004
+ *  Date last modified: 13 December 2021
+ *  Program description: This script makes the player moves, does what the player needs to
+ *  Revision history: 0.0.1 deleted everything and made a new one then used a much simpler code that i can understand    
+ *                    
+ */
+
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -5,89 +14,159 @@ using UnityEngine;
 public class PlayerBehaviour : MonoBehaviour
 {
     [Header("Movement")]
-    public float horizontalForce;
-    public float verticalForce;
-    public bool isGrounded;
-    public Transform groundOrigin;
-    public float groundRadius;
-    public LayerMask groundLayerMask;
-    [Range(0.1f, 0.9f)]
-    public float airControlFactor;
+    [SerializeField] private float movementSpeed;
+    [SerializeField] private float jumpPower;
+    [SerializeField] private float walljumpPowerX;
+    [SerializeField] private float walljumpPowerY;
 
-    private Rigidbody2D rigidbody;
 
-    // Start is called before the first frame update
-    void Start()
+    [Header("Animation")]
+    [SerializeField] private PlayerAnimationState state;
+
+
+    private float wallJumpCooldown;
+    private float inputX;
+
+
+    private Rigidbody2D rbody;
+    private Animator anim;
+    private BoxCollider2D boxCollider;
+
+    [Header("Layer")]
+    [SerializeField] private LayerMask platformLayer;
+    [SerializeField] private LayerMask wallLayer;
+
+    private void Awake()
     {
-        rigidbody = GetComponent<Rigidbody2D>();
+        // Get references
+        rbody = GetComponent<Rigidbody2D>();
+        anim = GetComponent<Animator>();
+        boxCollider = GetComponent<BoxCollider2D>();
     }
 
-    // Update is called once per frame
     void FixedUpdate()
     {
         Move();
-        CheckIfGrounded();
+        
     }
 
     private void Move()
     {
-        float x = Input.GetAxisRaw("Horizontal");
+        inputX = Input.GetAxisRaw("Horizontal");
+        float inputJump = Input.GetAxisRaw("Jump");
 
-        if (isGrounded) // is on ground
+        FlipSprite();
+
+        // wall jump
+        if (wallJumpCooldown > 0.2f)
         {
-            float y = Input.GetAxisRaw("Vertical");
-            float jump = Input.GetAxisRaw("Jump");
 
-            float horizontalMoveForce = x * horizontalForce;
-            float JumpMoveForce = jump * verticalForce;
+            // make player move left/right
+            rbody.velocity = new Vector2(inputX * movementSpeed, rbody.velocity.y);
 
-            float mass = rigidbody.mass * rigidbody.gravityScale;
-
-            rigidbody.AddForce(new Vector2(horizontalMoveForce, JumpMoveForce) * mass);
-            rigidbody.velocity *= 0.99f;
-        }
-        else // is on air
-        {
-            if (x!=0)
+            // make player stuck on wall
+            if (OnWall() && !isGrounded())
             {
-                float horizontalMoveForce = x * horizontalForce * airControlFactor;
-                float mass = rigidbody.mass * rigidbody.gravityScale;
+                
+                rbody.gravityScale = 0;
+                rbody.velocity = Vector2.zero;
+                anim.SetInteger("AnimationState", (int)PlayerAnimationState.ONWALL);
+                state = PlayerAnimationState.ONWALL;
+            }
+            else
+            {
+                // revert the gravity scale back
+                rbody.gravityScale = 10;
+            }
 
-                rigidbody.AddForce(new Vector2(horizontalMoveForce, 0.0f) * mass);
+            // make player jump
+            if (inputJump > 0)
+            {
+                
+                Jump();
             }
         }
-    }
-
-    private void CheckIfGrounded()
-    {
-        RaycastHit2D hit = Physics2D.CircleCast(groundOrigin.position, groundRadius, Vector2.down, groundRadius, groundLayerMask);
-        isGrounded = (hit) ? true : false;
-    }
-
-    // EVENTS
-
-    private void OnCollisionEnter2D(Collision2D other)
-    {
-        if (other.gameObject.CompareTag("Platform"))
+        else
         {
-            transform.SetParent(other.transform);
+            wallJumpCooldown += Time.deltaTime;
+        }
+
+        Animate();
+    }
+
+   private void Jump()
+    {
+        anim.SetInteger("AnimationState", (int)PlayerAnimationState.JUMP);
+        state = PlayerAnimationState.JUMP;
+        if (isGrounded())
+        {
+           // jump up
+            rbody.velocity = new Vector2(rbody.velocity.x, jumpPower);
+          
+        }
+        else if (OnWall() && !isGrounded())
+        {
+            
+            if (inputX == 0)
+            {
+                // detached to wall
+                rbody.velocity = new Vector2(-Mathf.Sin(transform.localScale.x) * walljumpPowerX * 2, walljumpPowerY * 0);
+                transform.localScale = new Vector3(-Mathf.Sign(transform.localScale.x), transform.localScale.y, transform.localScale.z);
+            }
+            else
+            {
+                // clmib up the wall
+                rbody.velocity = new Vector2(-Mathf.Sin(transform.localScale.x) * walljumpPowerX, walljumpPowerY);
+            }
+            wallJumpCooldown = 0;
         }
         
     }
 
-    private void OnCollisionExit2D(Collision2D other)
+    private void FlipSprite()
     {
-        if (other.gameObject.CompareTag("Platform"))
+        // flip player's sprite
+        if (inputX > 0)
         {
-            transform.SetParent(null);
+            transform.localScale = Vector3.one;
+        }
+        else if (inputX < 0)
+        {
+            transform.localScale = new Vector3(-1, 1, 1);
         }
     }
 
-    // UTILITIES
-
-    private void OnDrawGizmos()
+    private void Animate()
     {
-        Gizmos.color = Color.green;
-        Gizmos.DrawWireSphere(groundOrigin.position, groundRadius);
+        if (inputX != 0 && isGrounded())
+        {
+            anim.SetInteger("AnimationState", (int)PlayerAnimationState.RUN);
+            state = PlayerAnimationState.RUN;
+        }
+        else if (inputX == 0 && isGrounded())
+        {
+            anim.SetInteger("AnimationState", (int)PlayerAnimationState.IDLE);
+            state = PlayerAnimationState.IDLE;
+        }
+        if (rbody.velocity.y < -0.01f)
+        {
+            anim.SetInteger("AnimationState", (int)PlayerAnimationState.FALL);
+            state = PlayerAnimationState.FALL;
+        }
+       
     }
+
+    private bool isGrounded()
+    {
+        RaycastHit2D raycastHit = Physics2D.BoxCast(boxCollider.bounds.center, boxCollider.size, 0, Vector2.down, 0.1f, platformLayer);
+        return raycastHit.collider != null;
+        
+    }
+
+    private bool OnWall()
+    {
+        RaycastHit2D raycastHit = Physics2D.BoxCast(boxCollider.bounds.center, boxCollider.size, 0, new Vector2(transform.localScale.x,0), 0.1f, wallLayer);
+        return raycastHit.collider != null;
+    }
+
 }
